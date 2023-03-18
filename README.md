@@ -4,7 +4,7 @@ This project is aimed at ingesting data from [Components.one's All The News 2 da
 ## Prerequisites
 To run this project, you will need
 * Google Cloud Platform Account
-* Terraform CLI
+* [Terraform CLI](https://developer.hashicorp.com/terraform/downloads)
 
 ## Technologies Used
 * Docker

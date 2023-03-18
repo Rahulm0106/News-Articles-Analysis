@@ -16,7 +16,8 @@ To run this project, you will need
 * dbt (Data Build Tool)
 
 ## Setup
-1. [VM SSH Setup]()
+1. [VM SSH Setup](https://github.com/Rahulm0106/News-Articles-Analysis/blob/main/setup/ssh.md)
+2. [Terraform Infra Setup](https://github.com/Rahulm0106/News-Articles-Analysis/blob/main/setup/terraform.md)
 
 ## Usage
 

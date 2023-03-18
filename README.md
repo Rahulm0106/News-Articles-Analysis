@@ -16,6 +16,7 @@ To run this project, you will need
 * dbt (Data Build Tool)
 
 ## Setup
+1. [VM SSH Setup]()
 
 ## Usage
 

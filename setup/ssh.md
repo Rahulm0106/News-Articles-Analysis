@@ -25,7 +25,7 @@
 
 * Once you are setup, you can simply SSH into the server using the below command in terminal. Do not forget to change the IP address of VM restarts.
     ```bash
-    ssh streamify-airflow
+    ssh newsarticles-airflow
     ```
 
 * You will have to forward ports from your VM to your local machine for you to be able to see Airflow UI. Check how to do that [here](https://youtu.be/ae-CV2KfoN0?t=1074)

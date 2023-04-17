@@ -1,6 +1,7 @@
 import os
 import pyarrow.csv as pv
 import pyarrow.parquet as pq
+import pandas as pd
 from datetime import datetime
 
 from airflow import DAG
@@ -17,6 +18,7 @@ default_args = {
 
 AIRFLOW_HOME = os.environ.get('AIRFLOW_HOME', '/opt/airflow')
 
+
 URL = 'https://www.dropbox.com/s/cn2utnr5ipathhh/all-the-news-2-1.zip'
 
 # FILE = "{{ execution_date.strftime(\'%Y-%m-%d-%-H\') }}.json.gz"
@@ -25,10 +27,12 @@ URL = 'https://www.dropbox.com/s/cn2utnr5ipathhh/all-the-news-2-1.zip'
 CSV_FILENAME = 'all-the-news-2-1.csv'
 ZIP_FILENAME = 'articles.zip'
 PARQUET_FILENAME = CSV_FILENAME.replace('csv', 'parquet')
+DATA_FOLDER = 'data_airflow'
 
 CSV_OUTFILE = f'{AIRFLOW_HOME}/{CSV_FILENAME}'
 ZIP_OUTFILE = f'{AIRFLOW_HOME}/{ZIP_FILENAME}'
 PARQUET_OUTFILE = f'{AIRFLOW_HOME}/{PARQUET_FILENAME}'
+ARTICLE_DATA = f'{AIRFLOW_HOME}/{DATA_FOLDER}'
 TABLE_NAME = 'articles'
 
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
@@ -42,9 +46,22 @@ def convert_to_parquet(csv_file, parquet_file):
 
     # Path(f'{AIRFLOW_HOME}/fhv_tripdata/parquet').mkdir(parents=True, exist_ok=True)
 
-    table = pv.read_csv(csv_file)
-    pq.write_table(table, parquet_file)
+    table = pd.read_csv("all-the-news-2-1.csv", iterator=True, chunksize=100000)
+    i = 0
+    while True:
+        i = i + 1
+        try:
+                
+            df = next(table)
+            print(str(i) + "_data.parquet")
+            Data_Home = DATA_FOLDER + "/" + str(i) + "_data.parquet"
+            # path = Path(f"data/{color}/{dataset_file}.parquet")
+            # path = Path(f"{Data_HOME}/{str(i) + "_data.parquet"}")
+            df.to_parquet(Data_Home)
 
+        except StopIteration:
+            print("Finished converting data into the parquet format")
+            break
 
 def upload_to_gcs(file_path, bucket_name, blob_name):
     """
@@ -68,11 +85,16 @@ with DAG(
     default_args=default_args,
     description=f'Download and Ingest data to Google Cloud Storage',
     schedule_interval="@once",  # At the 5th minute of every hour
-    start_date=datetime.now(),
-    catchup=True,
+    start_date=datetime(2023,4,16),
+    catchup=False,
     # max_active_runs=3,
     tags=['articles_data']
 ) as dag:
+
+    new_folder_creation_task = BashOperator(
+        task_id="new_folder_creation",
+        bash_command=f"mkdir {ARTICLE_DATA}"
+    )
 
     download_articles_file_task = BashOperator(
         task_id="download_articles_file",
@@ -97,15 +119,15 @@ with DAG(
         task_id='upload_to_gcs',
         python_callable=upload_to_gcs,
         op_kwargs={
-            'file_path': PARQUET_OUTFILE,
+            'file_path': DATA_FOLDER,
             'bucket_name': GCP_GCS_BUCKET,
-            'blob_name': f'{TABLE_NAME}/{PARQUET_FILENAME}'
+            'blob_name': f'{DATA_FOLDER}'
         }
     )
-
+    
     remove_files_from_local_task = BashOperator(
         task_id='remove_files_from_local',
         bash_command=f'rm {CSV_OUTFILE} {ZIP_OUTFILE}'
     )
 
-    download_articles_file_task >> unzip_articles_file_task >> convert_to_parquet_task >> upload_to_gcs_task >> remove_files_from_local_task
+    new_folder_creation_task >> download_articles_file_task >> unzip_articles_file_task >> convert_to_parquet_task >> upload_to_gcs_task >> remove_files_from_local_task
